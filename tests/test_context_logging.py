@@ -18,6 +18,7 @@ from context_logging.logger import logger
 
 
 def test_context_object_finish(caplog):
+    caplog.set_level(logging.INFO)
     context = ContextObject(
         name='name',
         log_execution_time=True,
@@ -121,14 +122,28 @@ def test_fill_exception_last_context():
 
 
 def test_log_record(caplog):
+    caplog.set_level(logging.INFO)
     setup_log_record()
 
     logging.info('test')
-    assert caplog.records[-1].context == ''
+    assert caplog.records[-1].context == {}
 
     with Context(data=1):
         logging.info('test')
         assert caplog.records[-1].context == {'data': 1}
+
+
+def test_log_format(caplog):
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(message)s %(context)s')
+    handler.setFormatter(formatter)
+
+    caplog.set_level(logging.INFO)
+    setup_log_record()
+    with Context(data=1):
+        logging.info('test 1')
+
+        assert handler.format(caplog.records[0]) == "test 1 {'data': 1}"
 
 
 def sync_task():
