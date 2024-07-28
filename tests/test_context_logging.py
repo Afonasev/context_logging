@@ -17,6 +17,7 @@ from context_logging.log_record import setup_log_record
 from context_logging.logger import logger
 
 
+
 def test_context_object_finish(caplog):
     caplog.set_level(logging.INFO)
     context = ContextObject(
@@ -144,6 +145,19 @@ def test_log_format(caplog):
         logging.info('test 1')
 
         assert handler.format(caplog.records[0]) == "test 1 {'data': 1}"
+
+
+def test_passing_context_to_threads():
+    from contextvars import copy_context
+    def run_in_thread():
+        with Context(value2=2):
+            assert current_context == {'value1': 1, 'value2': 2}
+
+    with Context(value1=1):
+        assert current_context == {'value1': 1}
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(copy_context().run, run_in_thread)
+            future.result()
 
 
 def sync_task():
