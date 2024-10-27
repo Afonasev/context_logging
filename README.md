@@ -142,7 +142,7 @@ except Exception as exc:
 
 Default value for fill_exception_context param can be changed with env
 
-    export CONTEXT_LOGGING_FILL_EXEPTIONS_DEFAULT=0
+    export CONTEXT_LOGGING_FILL_EXCEPTIONS_DEFAULT=0
 
 ### We can set data to root context that never will be closed
 

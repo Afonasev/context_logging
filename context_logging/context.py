@@ -1,7 +1,8 @@
 import time
-from collections import UserDict
+from collections import ChainMap, UserDict
 from contextvars import ContextVar, Token
-from typing import Any, ChainMap, Dict, Optional, Type, cast
+from itertools import chain
+from typing import Any, Dict, Optional, Type, cast
 
 from deprecated import deprecated
 
@@ -33,7 +34,7 @@ class ContextFactory(SyncAsyncContextDecorator):
         self._log_execution_time = log_execution_time
 
         if fill_exception_context is None:
-            fill_exception_context = config.FILL_EXEPTIONS_DEFAULT
+            fill_exception_context = config.FILL_EXCEPTIONS_DEFAULT
         self._fill_exception_context = fill_exception_context
 
     @deprecated
@@ -87,7 +88,9 @@ class ContextObject(UserDict):  # type: ignore
 
     @property
     def data(self) -> ChainMap[Any, Any]:  # type: ignore
-        return ChainMap(self._context_data, self._parent_context or {})
+        if self._parent_context is not None:
+            return ChainMap(self._context_data, self._parent_context)
+        return ChainMap(self._context_data)
 
     def start(self) -> None:
         self._parent_context = _current_context.get()
@@ -113,12 +116,28 @@ class ContextObject(UserDict):  # type: ignore
             cast(Token, self._parent_context_token)  # type: ignore
         )
 
+    def get_snapshot(self) -> dict[Any, Any]:
+        refs = [self._context_data.items()]
+        parent_context: Optional[ContextObject] = self._parent_context
+
+        while parent_context is not None:
+            # pylint: disable=W0212
+            refs.append(parent_context._context_data.items())
+            parent_context = parent_context._parent_context
+
+        items = chain.from_iterable(reversed(refs))
+        return dict(items)
+
 
 root_context = ContextFactory(name=ROOT_CONTEXT_NAME).create_context()
 
 _current_context: ContextVar[ContextObject] = ContextVar(
     'ctx', default=root_context
 )
+
+
+def get_current_context_shapshot() -> dict[Any, Any]:
+    return _current_context.get().get_snapshot()
 
 
 class CurrentContextProxy(UserDict):  # type: ignore

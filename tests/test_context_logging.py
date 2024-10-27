@@ -11,10 +11,16 @@ from context_logging.context import (
     Context,
     ContextObject,
     current_context,
+    get_current_context_shapshot,
     root_context,
 )
 from context_logging.log_record import setup_log_record
 from context_logging.logger import logger
+
+
+def assert_current_context(exp_val):
+    assert current_context == exp_val
+    assert get_current_context_shapshot() == exp_val
 
 
 def test_context_object_finish(caplog):
@@ -37,54 +43,56 @@ def test_root_context():
 
 
 def test_current_context():
-    assert current_context == {}
+    assert_current_context({})
 
     with Context(data='outer', outer=''):
-        assert current_context == {'data': 'outer', 'outer': ''}
+        assert_current_context({'data': 'outer', 'outer': ''})
 
         with Context(data='inner', inner=''):
-            assert current_context == {
-                'data': 'inner',
-                'outer': '',
-                'inner': '',
-            }
+            assert_current_context(
+                {
+                    'data': 'inner',
+                    'outer': '',
+                    'inner': '',
+                }
+            )
 
-        assert current_context == {'data': 'outer', 'outer': ''}
+        assert_current_context({'data': 'outer', 'outer': ''})
 
-    assert current_context == {}
+    assert_current_context({})
 
 
 def test_writing_to_context_info():
-    assert current_context == {}
+    assert_current_context({})
 
     with Context():
-        assert current_context == {}
+        assert_current_context({})
 
         current_context['test'] = 'test'
-        assert current_context == {'test': 'test'}
+        assert_current_context({'test': 'test'})
 
-    assert current_context == {}
+    assert_current_context({})
 
 
 def test_context_as_decorator():
     @Context(data='data')
     def wrapped():
-        assert current_context == {'data': 'data'}
+        assert_current_context({'data': 'data'})
 
-    assert current_context == {}
+    assert_current_context({})
     wrapped()
-    assert current_context == {}
+    assert_current_context({})
 
 
 def test_context_with_start_finish():
     context = Context(data='data')
-    assert current_context == {}
+    assert_current_context({})
 
     context.start()
-    assert current_context == {'data': 'data'}
+    assert_current_context({'data': 'data'})
 
     context.finish()
-    assert current_context == {}
+    assert_current_context({})
 
 
 def test_default_name():
@@ -124,7 +132,7 @@ def test_log_record(caplog):
     setup_log_record()
 
     logging.info('test')
-    assert caplog.records[-1].context == ''
+    assert caplog.records[-1].context == {}
 
     with Context(data=1):
         logging.info('test')
